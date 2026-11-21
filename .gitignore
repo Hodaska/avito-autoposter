@@ -1,0 +1,17 @@
+# личное и секретное: у каждого своё, в репозиторий не попадает
+.venv/
+__pycache__/
+*.pyc
+secrets/*
+!secrets/telegram.example.json
+settings.json
+автовыкладка/config.json
+автовыкладка/debug/
+profile_account/
+profile_filler/
+data/
+статистика_выкладок.csv
+карта_метро/карта.html
+# ваши фотографии товара
+фото/*/*
+!фото/*/.gitkeep

@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Автовыкладка</title>
+<style>
+:root{--bg:#f4f2ee;--card:#fff;--ink:#1c1b19;--mut:#6f6c65;--line:#e5e1d9;--acc:#1b5cf2;--acc2:#e8efff;--ok:#157a43;--okbg:#e3f4ea;--bad:#b3261e;--badbg:#fbe9e7;--warn:#8a5a00;--warnbg:#fff3d6;--sh:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(40,30,10,.06)}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1f1f1d;--ink:#efeee9;--mut:#9b988f;--line:#34332f;--acc:#6f9bff;--acc2:#1f2a44;--ok:#5fd394;--okbg:#17301f;--bad:#ff8a80;--badbg:#3a1d1a;--warn:#f0c15a;--warnbg:#3a2f12;--sh:0 1px 2px rgba(0,0,0,.4)}}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,"Segoe UI",Roboto,sans-serif}
+main{max-width:920px;margin:0 auto;padding:28px 16px 80px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+h1{font-size:30px;letter-spacing:-.02em;margin:0;line-height:1.1}.sub{color:var(--mut);margin:6px 0 0;max-width:520px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px}
+.dot{width:9px;height:9px;border-radius:50%;background:#bbb}.dot.ok{background:#22a45d}.dot.bad{background:#e0463b}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:var(--sh)}
+.card>h2{font-size:17px;margin:0 0 4px;letter-spacing:-.01em}.hint{color:var(--mut);font-size:13.5px;margin:0 0 14px}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:0;padding:0;list-style:none;counter-reset:s}
+.steps li{counter-increment:s;background:var(--bg);border-radius:12px;padding:14px 14px 14px 48px;position:relative;font-size:14px}
+.steps li::before{content:counter(s);position:absolute;left:14px;top:13px;width:24px;height:24px;border-radius:50%;background:var(--acc);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+.steps b{display:block;margin-bottom:2px}.steps .me{color:var(--warn)}
+details.how>summary{cursor:pointer;font-weight:600;list-style:none}details.how>summary::-webkit-details-marker{display:none}
+details.how>summary::after{content:"показать / скрыть";float:right;color:var(--mut);font-weight:400;font-size:13px}
+.model{display:grid;grid-template-columns:1fr auto auto;gap:14px 18px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+.model:first-of-type{border-top:0}.mt{font-weight:600;font-size:16px}.mm{color:var(--mut);font-size:13px;margin-top:2px}
+.badge{display:inline-block;font-size:12px;border-radius:999px;padding:2px 9px;background:var(--acc2);color:var(--acc);margin-right:6px}.badge.bad{background:var(--badbg);color:var(--bad)}
+.stepper{display:flex;align-items:center;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.stepper button{border:0;background:var(--bg);color:var(--ink);width:38px;height:40px;font-size:20px;cursor:pointer}.stepper button:hover{background:var(--acc2)}
+.stepper input{width:54px;text-align:center;border:0;background:transparent;font-size:17px;font-weight:700;color:var(--ink);-moz-appearance:textfield}
+.stepper input::-webkit-outer-spin-button,.stepper input::-webkit-inner-spin-button{-webkit-appearance:none}
+.price{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:3px}
+input,select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+.price input{width:130px;font-size:15px;font-weight:600}
+.more{grid-column:1/-1;display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.more label{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:3px;flex:1;min-width:150px}
+.ph{display:flex;gap:8px;flex-wrap:wrap;grid-column:1/-1}.ph img{height:96px;border-radius:10px;border:1px solid var(--line)}
+button.b{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:10px 16px;cursor:pointer;font-weight:500}
+button.b:hover{border-color:var(--acc)}button.b.p{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600;padding:12px 22px}
+button.b.s{padding:6px 12px;font-size:13px}button.b.d{color:var(--bad);border-color:var(--bad)}button.b:disabled{opacity:.45;cursor:not-allowed}
+.total{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;background:var(--acc2);border-radius:12px;padding:12px 16px;margin-top:6px}
+.total b{font-size:20px}.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 4px}
+.set{display:flex;gap:16px;flex-wrap:wrap}.set label{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:3px;min-width:200px}
+.prog{height:10px;background:var(--bg);border-radius:99px;overflow:hidden;margin:12px 0}.prog i{display:block;height:100%;background:var(--acc);width:0;transition:width .4s}
+.note{border-radius:12px;padding:12px 14px;font-size:14px;margin-top:12px}.note.ok{background:var(--okbg);color:var(--ok)}.note.bad{background:var(--badbg);color:var(--bad)}.note.warn{background:var(--warnbg);color:var(--warn)}
+pre{white-space:pre-wrap;font:12.5px/1.5 ui-monospace,Consolas,monospace;margin:8px 0 0;background:var(--bg);border-radius:10px;padding:10px 12px;max-height:220px;overflow:auto}
+.ad{border-top:1px solid var(--line);padding:10px 0}.ad summary{cursor:pointer}.ad .pr{color:var(--mut);margin-left:8px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .25s}.toast.on{opacity:1}
+@media(max-width:640px){.model{grid-template-columns:1fr}h1{font-size:25px}}
+</style></head><body><main>
+<header>
+  <div><h1>Автовыкладка</h1><p class="sub">Готовит формы объявлений на Авито: заполняет всё сама, а адрес, ставку и кнопку «Опубликовать» ты нажимаешь руками.</p></div>
+  <div class="chips"><span class="chip"><i class="dot" id="dChrome"></i><span id="tChrome">проверяю Chrome…</span></span><span class="chip" id="cLogin" hidden></span><button class="b s" id="hide" hidden>Я закончил работу: спрятать браузер</button><button class="b s" id="showb" hidden>Показать браузер</button><span class="chip" id="cTabs" hidden></span></div>
+</header>
+
+<div class="card"><details class="how" open><summary>Как это работает</summary>
+<p class="hint" style="margin-top:10px">Перед запуском сними или удали старые объявления на Авито. Дальше четыре шага.</p>
+<ol class="steps">
+<li><b>Окно Авито появится само</b>Браузер Авито всегда работает в фоне и спрятан. Когда открываешь эту страницу, его окно просто появляется, без перезапуска и повторного входа. Он ходит в интернет мимо VPN, с твоего домашнего IP. Закончил: нажми «Я закончил работу», окно спрячется, а счётчик сообщений продолжит слать уведомления в Telegram.</li>
+<li><b>Выбери состав</b>Сколько каких телефонов выложить, и проверь цены. Всё сохраняется само.</li>
+<li><b>Нажми «Заполнить формы»</b>Я открываю формы по очереди, ввожу данные и фото. Одна форма ≈ 1 минута. Окно Chrome не закрывай.</li>
+<li class="me"><b>Доделай руками</b>В каждой вкладке: выбери адрес, выключи Авито Доставку, поставь ставку 1 ₽ и опубликуй.</li>
+</ol></details></div>
+
+<div class="card"><h2>Что выкладываем</h2>
+<p class="hint">Тексты и фото для каждой формы делаются новыми и не повторяются. Цвет, память и SIM выставляются в характеристиках сами.</p>
+<div id="models"></div>
+<div class="total"><span>Всего форм: <b id="tot">0</b></span><span id="eta" style="color:var(--mut)"></span></div>
+</div>
+
+<div class="bar">
+<button class="b p" id="run">Заполнить формы в Авито →</button>
+<button class="b d" id="stop" hidden>Остановить</button>
+<button class="b" id="prev">Показать тексты</button>
+<button class="b" id="save">Сохранить</button>
+</div>
+
+<div id="prog"></div>
+<div id="out"></div>
+
+<div class="card" style="margin-top:16px"><h2>Настройки</h2>
+<p class="hint">Менять нужно редко.</p>
+<div class="set">
+<label>SIM в заголовке и характеристиках<input id="sim"></label>
+<label>Как вводить описание<select id="dm"><option value="paste">Вставкой целиком (быстро)</option><option value="type">По буквам (около 2 минут)</option></select></label>
+</div>
+<p class="hint" style="margin:14px 0 0">Шаблон описания лежит в <code>автовыкладка\шаблон_описания.txt</code>. Раз в неделю его структура меняется (короче, длиннее, другой порядок блоков), смысл остаётся тем же.</p>
+</div>
+<div class="toast" id="toast"></div>
+</main>
+<script>
+let cfg, info={photos:{}}, timer;const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("on"),2600)}
+async function api(p,b){const r=await fetch(p,b!==undefined?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}:{});
+ const j=await r.json();if(!r.ok)throw new Error(j.error||r.status);return j}
+function total(){return Object.values(cfg.models).reduce((a,m)=>a+(+m.count||0),0)}
+function upd(){const n=total();$("#tot").textContent=n;$("#eta").textContent=n?`примерно ${Math.max(1,Math.round(n*1.1))} мин`:"выбери хотя бы одну";$("#run").disabled=!n}
+function render(){const box=$("#models");box.innerHTML="";
+ for(const [k,m] of Object.entries(cfg.models)){const n=info.photos[k];const d=document.createElement("div");d.className="model";
+  d.innerHTML=`<div><div class="mt">${esc(m.label)}</div><div class="mm"><span class="badge ${n?"":"bad"}">${n?n+" фото":"нет фото"}</span>папка ${esc(m.photo_dir)}</div></div>
+  <label class="price">Цена, ₽<input data-k="${k}" data-f="price" type="number" value="${m.price}"></label>
+  <div class="stepper"><button data-k="${k}" data-d="-1" aria-label="меньше">−</button><input data-k="${k}" data-f="count" type="number" min="0" value="${m.count}"><button data-k="${k}" data-d="1" aria-label="больше">+</button></div>
+  <div class="more"><button class="b s" data-photo="${k}">Пример фото</button><span class="mm">Цвет в тексте: ${esc(m.color)} · в Авито: ${esc(m.color_avito)}</span></div><div class="ph" id="ph-${k}"></div>`;
+  box.appendChild(d)}
+ box.querySelectorAll("input[data-f]").forEach(i=>i.oninput=()=>{cfg.models[i.dataset.k][i.dataset.f]=Number(i.value);upd();dirty()});
+ box.querySelectorAll("button[data-d]").forEach(b=>b.onclick=()=>{const m=cfg.models[b.dataset.k];m.count=Math.max(0,(+m.count||0)+Number(b.dataset.d));
+  box.querySelector(`input[data-k="${b.dataset.k}"][data-f="count"]`).value=m.count;upd();dirty()});
+ box.querySelectorAll("button[data-photo]").forEach(b=>b.onclick=()=>samplePhotos(b.dataset.photo));
+ $("#sim").value=cfg.sim;$("#dm").value=cfg.desc_mode||"paste";upd()}
+let st;function dirty(){clearTimeout(st);st=setTimeout(()=>save(true),900)}
+function collect(){cfg.sim=$("#sim").value;cfg.desc_mode=$("#dm").value}
+async function save(quiet){try{collect();await api("/api/config",cfg);if(!quiet)toast("Сохранено")}catch(e){toast("Ошибка: "+e.message)}}
+$("#sim").oninput=$("#dm").onchange=dirty;
+async function samplePhotos(k){try{await save(true);toast("Делаю фото…");const r=await api("/api/photo-sample",{model:k});
+ $("#ph-"+k).innerHTML=r.urls.map(u=>`<img src="${u}?${Date.now()}">`).join("");toast("Это пример уникализации. Каждый раз получается другой.")}catch(e){toast("Ошибка: "+e.message)}}
+$("#save").onclick=()=>save();
+$("#hide").onclick=()=>browserAct("hide");$("#showb").onclick=()=>browserAct("show");
+$("#prev").onclick=async()=>{try{await save(true);const r=await api("/api/preview",{});
+ $("#out").innerHTML=`<div class="card"><h2>Тексты (${r.length})</h2><p class="hint">Так будут выглядеть заголовки и описания. Они уникальны между собой, при запуске сделаются заново.</p>`+
+ r.map((a,i)=>`<details class="ad"><summary><b>${i+1}. ${esc(a.title)}</b><span class="pr">${a.price} ₽</span></summary><pre>${esc(Object.entries(a.chars).map(([k,v])=>k+": "+v).join("\n"))}</pre><pre>${esc(a.desc)}</pre></details>`).join("")+`</div>`}catch(e){toast("Ошибка: "+e.message)}};
+$("#run").onclick=async()=>{try{await save(true);if(!info.chrome&&!confirm("Chrome с Авито не найден (порт 9222). Всё равно запустить?"))return;
+ const r=await api("/api/run",{});toast(`Запущено: ${r.total} форм`);$("#out").innerHTML="";poll()}catch(e){toast(e.message)}};
+$("#stop").onclick=()=>api("/api/stop",{}).then(()=>toast("Останавливаю после текущего действия"));
+function renderProg(s){const pct=s.total?Math.round(100*s.done/s.total):0;
+ let note="";
+ if(s.error)note=`<div class="note bad"><b>Остановилась.</b> ${esc(s.error)}<br>Вкладка с текущей формой осталась как есть. Исправь причину и запусти снова: будут новые формы, уже готовые вкладки закрой или опубликуй.</div>`;
+ else if(!s.running&&s.total&&s.done===s.total)note=`<div class="note ok"><b>Готово: ${s.done} форм.</b> Теперь в каждой вкладке Chrome: выбери адрес, выключи Авито Доставку, поставь ставку 1 ₽ и опубликуй.</div>`;
+ $("#prog").innerHTML=s.total||s.running?`<div class="card"><h2>${s.running?"Заполняю формы":"Итог"}: ${s.done} из ${s.total}</h2><div class="prog"><i style="width:${pct}%"></i></div>
+ <div class="hint" style="margin:0">${s.running?esc(s.step):""}</div>${note}<details style="margin-top:10px"><summary class="hint" style="cursor:pointer">журнал</summary><pre>${esc(s.log.slice(-14).join("\n"))}</pre></details></div>`:""}
+function poll(){clearInterval(timer);const tick=async()=>{try{const s=await api("/api/status");renderProg(s);$("#run").disabled=s.running||!total();$("#stop").hidden=!s.running;if(!s.running)clearInterval(timer)}catch(e){}};tick();timer=setInterval(tick,2000)}
+async function refreshInfo(){try{info=await api("/api/info");$("#dChrome").className="dot "+(info.chrome?"ok":"bad");$("#tChrome").textContent=info.chrome?"Chrome подключён":"Chrome не запущен (start_chrome.bat)";
+ const t=$("#cTabs");if(info.chrome){t.hidden=false;t.textContent=`открытых форм в Chrome: ${info.forms}`}else t.hidden=true}catch(e){}}
+async function browserAct(action){const t=$("#tChrome"),d=$("#dChrome");
+ try{const r=await api("/api/browser",{action});await refreshInfo();const L=$("#cLogin");L.hidden=false;
+  const hb=$("#hide"),sb=$("#showb");hb.hidden=!r.visible;sb.hidden=r.visible;
+  if(r.error){toast(r.error);L.hidden=true}
+  else if(r.blocked){L.textContent="Авито просит проверку: нажми «Пройти проверку» в окне Chrome";L.style.color="var(--warn)"}
+  else if(r.logged_in===false){L.textContent="войди в Авито в окне Chrome (один раз)";L.style.color="var(--warn)"}
+  else if(r.logged_in===true){L.textContent="вход в Авито выполнен";L.style.color="var(--ok)"}
+  else{L.hidden=true}
+  if(action==="hide")toast("Браузер спрятан, счётчик сообщений работает как обычно.");
+  return r}catch(e){toast("Не получилось: "+e.message)}}
+(async()=>{cfg=await api("/api/config");render();browserAct("show");await refreshInfo();render();const s=await api("/api/status");if(s.running||s.total)poll();setInterval(refreshInfo,6000)})();
+</script></body></html>

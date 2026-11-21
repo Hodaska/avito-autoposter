@@ -1,0 +1,386 @@
+<meta charset="utf-8">
+<title>Карта выкладок по метро</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap">
+<style>
+/* Раскладка: карта метро слева на всю высоту экрана, справа панель (сводка, лучшие и слабые, карточка станции); на телефоне панель уходит под карту */
+:root {
+  --bg: #f3f5f7; --surface: #ffffff; --surface2: #eaeef2; --fg: #14202b; --muted: #5a6b7a; --border: #d6dde4;
+  --accent: #0a6a86; --accent-fg: #ffffff; --sel: #e0521f;
+  --h0: #b7c2cc; --h1: #c4e3ea; --h2: #82c5d1; --h3: #3b9eb2; --h4: #0f7490; --h5: #073f58;
+  --ring: #14202b; --halo: #f3f5f7; --lineop: .42;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-head: "Space Grotesk", "Inter", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e161d; --surface: #16212b; --surface2: #1e2c38; --fg: #e5ecf2; --muted: #93a5b5; --border: #2b3b49;
+    --accent: #5cc3da; --accent-fg: #06222c; --sel: #ff8a4d;
+    --h0: #4a5966; --h1: #1f4c5b; --h2: #2b7c8f; --h3: #43a9bc; --h4: #86d3df; --h5: #d3f4f8;
+    --ring: #e5ecf2; --halo: #0e161d; --lineop: .5; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e161d; --surface: #16212b; --surface2: #1e2c38; --fg: #e5ecf2; --muted: #93a5b5; --border: #2b3b49;
+  --accent: #5cc3da; --accent-fg: #06222c; --sel: #ff8a4d;
+  --h0: #4a5966; --h1: #1f4c5b; --h2: #2b7c8f; --h3: #43a9bc; --h4: #86d3df; --h5: #d3f4f8;
+  --ring: #e5ecf2; --halo: #0e161d; --lineop: .5; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.45;
+  padding-block: 16px 32px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--font-head); font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: 22px; }
+h2 { font-size: 15px; margin-bottom: 8px; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1480px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 10px 20px; }
+.head .sub { color: var(--muted); margin: 2px 0 0; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: transparent; padding: 7px 12px; color: var(--muted); }
+.seg button + button { border-left: 1px solid var(--border); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); font-weight: 600; }
+.chk { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); cursor: pointer; }
+.chk input { width: 16px; height: 16px; accent-color: var(--accent); }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 14px; align-items: start; }
+.mapbox { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  height: min(78vh, 820px); min-height: 420px; }
+#map { width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+#map.drag { cursor: grabbing; }
+.ln { fill: none; stroke-width: 2.4px; stroke-linecap: round; stroke-linejoin: round; opacity: var(--lineop); vector-effect: non-scaling-stroke; }
+.st circle { stroke: var(--ring); stroke-width: 1px; vector-effect: non-scaling-stroke; cursor: pointer; }
+.st.h0 circle { fill: var(--h0); stroke: var(--surface); }
+.st.h1 circle { fill: var(--h1); } .st.h2 circle { fill: var(--h2); } .st.h3 circle { fill: var(--h3); }
+.st.h4 circle { fill: var(--h4); } .st.h5 circle { fill: var(--h5); }
+.st.sel circle { stroke: var(--sel); stroke-width: 3px; }
+.st.dim { opacity: .28; }
+.st.todo circle { fill: var(--surface); stroke: var(--accent); stroke-width: 2px; }
+.st text { fill: var(--fg); paint-order: stroke; stroke: var(--halo); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; font-family: var(--font-body); font-weight: 500; }
+.st .lbl { display: none; }
+.st.show .lbl { display: block; }
+.zoomctl { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.zoomctl button { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-size: 18px; line-height: 1; }
+.legend { position: absolute; left: 10px; bottom: 10px; background: color-mix(in srgb, var(--surface) 92%, transparent); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px; font-size: 12px; max-width: calc(100% - 20px); }
+.legend .row { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; }
+.legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; border: 1px solid var(--ring); vertical-align: -1px; margin-right: 4px; }
+.legend i.todo { background: var(--surface); border: 2px solid var(--accent); }
+.legend i.g0 { background: var(--h0); border-color: var(--surface); }
+.tip { position: fixed; pointer-events: none; z-index: 20; background: var(--fg); color: var(--bg); padding: 6px 9px; border-radius: 6px; font-size: 12px; max-width: 240px; display: none; }
+.side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stat b { display: block; font-family: var(--font-head); font-size: 20px; font-variant-numeric: tabular-nums; }
+.stat span { color: var(--muted); font-size: 12px; }
+.mods { display: grid; gap: 6px; margin-top: 10px; }
+.mod { display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid var(--border); padding-top: 6px; font-variant-numeric: tabular-nums; }
+.mod span:last-child { text-align: right; }
+.search { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface2); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.rank button { width: 100%; display: flex; justify-content: space-between; gap: 8px; border: 0; background: transparent; padding: 4px 6px; border-radius: 6px; text-align: left; }
+.rank button:hover { background: var(--surface2); }
+.rank .n { font-variant-numeric: tabular-nums; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 99px; background: var(--surface2); font-size: 12px; }
+.chip i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.ad { border-top: 1px solid var(--border); padding: 8px 0; }
+.ad:first-of-type { border-top: 0; }
+.ad .m { font-weight: 600; }
+.ad .big { font-family: var(--font-head); font-size: 18px; font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.tablebox { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 520px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+th button { border: 0; background: transparent; font-weight: 600; padding: 0; }
+td.r, th.r { text-align: right; }
+tr.row { cursor: pointer; }
+tr.row:hover td { background: var(--surface2); }
+.warn { color: var(--muted); font-size: 12px; }
+@media (max-width: 960px) {
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .mapbox { height: 62vh; min-height: 360px; }
+  .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 460px) { .two { grid-template-columns: 1fr; } }
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <div>
+      <h1>Карта выкладок по метро</h1>
+      <p class="sub" id="sub"></p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Город" id="segCity">
+        <button data-v="msk" aria-pressed="true">Москва</button>
+        <button data-v="spb" aria-pressed="false">Санкт-Петербург</button>
+      </div>
+      <div class="seg" role="group" aria-label="Телефон" id="segModel">
+        <button data-v="all" aria-pressed="true">Все</button>
+        <button data-v="17" aria-pressed="false">iPhone 17</button>
+        <button data-v="17pm" aria-pressed="false">17 Pro Max</button>
+      </div>
+      <label class="chk" for="todo"><input type="checkbox" id="todo"> Показать, где ещё не пробовали</label>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="mapbox">
+      <svg id="map" role="img" aria-label="Схема станций метро с просмотрами объявлений"><g id="world"><g id="lines"></g><g id="stations"></g></g></svg>
+      <div class="zoomctl">
+        <button id="zin" aria-label="Приблизить">+</button>
+        <button id="zout" aria-label="Отдалить">−</button>
+        <button id="zreset" aria-label="Вся схема" title="Вся схема">⤢</button>
+      </div>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <div class="stats" id="stats"></div>
+        <div class="mods" id="mods"></div>
+      </div>
+      <div class="card">
+        <h2>Найти станцию</h2>
+        <input class="search" id="search" list="stlist" placeholder="Например, Баррикадная" autocomplete="off">
+        <datalist id="stlist"></datalist>
+      </div>
+      <div class="card" id="detail"></div>
+      <div class="card two">
+        <div><h2>Лучше всего</h2><ul class="rank" id="best"></ul></div>
+        <div><h2>Хуже всего</h2><ul class="rank" id="worst"></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Все выкладки</h2>
+    <div class="tablebox"><table id="tbl"></table></div>
+    <p class="warn" id="warn"></p>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+const D = __DATA__;
+const MODEL = { "17": "iPhone 17", "17pm": "17 Pro Max", "?": "модель не указана" };
+const fmt = (n, d = 1) => n.toLocaleString("ru-RU", { maximumFractionDigits: d, minimumFractionDigits: 0 });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const $ = id => document.getElementById(id);
+const norm = s => s.trim().toLowerCase().replace(/ё/g, "е");
+function plural(n, a, b, c) { const m = n % 100, d = n % 10; return m > 10 && m < 15 ? c : d === 1 ? a : d > 1 && d < 5 ? b : c; }
+const binOf = r => r < 2 ? 1 : r < 4 ? 2 : r < 8 ? 3 : r < 15 ? 4 : 5;
+const BINLBL = ["меньше 2", "2–4", "4–8", "8–15", "15 и больше"];
+
+const S = { city: "msk", model: "all", todo: false, sel: null, sort: { key: "rate", dir: -1 } };
+let G = null;                  // геометрия текущего города
+let V = { k: 1, tx: 0, ty: 0 }; // масштаб и сдвиг карты
+const svg = $("map"), world = $("world");
+
+/* ---------- данные ---------- */
+function adRate(a) { const h = a.history[a.history.length - 1]; return h.views / h.days; }
+function adViews(a) { return a.history[a.history.length - 1].views; }
+function adDays(a) { return a.history[a.history.length - 1].days; }
+function adsOf(city, model) { return D.ads.filter(a => a.city === city && (model === "all" || a.model === model)); }
+function byStation(ads) {
+  const m = new Map();
+  for (const a of ads) { if (!m.has(a.station)) m.set(a.station, []); m.get(a.station).push(a); }
+  return m;
+}
+const stRate = list => list.reduce((s, a) => s + adRate(a), 0) / list.length;
+const median = arr => { const s = [...arr].sort((x, y) => x - y), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : 0; };
+
+/* ---------- геометрия ---------- */
+function build(city) {
+  const M = D.metro[city], names = Object.keys(M.stations);
+  let la0 = 1e9, la1 = -1e9, lo0 = 1e9, lo1 = -1e9;
+  for (const n of names) { const s = M.stations[n]; la0 = Math.min(la0, s.lat); la1 = Math.max(la1, s.lat); lo0 = Math.min(lo0, s.lng); lo1 = Math.max(lo1, s.lng); }
+  const cos = Math.cos(((la0 + la1) / 2) * Math.PI / 180), W = 1000, pad = 40;
+  const sc = (W - 2 * pad) / ((lo1 - lo0) * cos), H = Math.round((la1 - la0) * sc + 2 * pad);
+  const pos = {};
+  for (const n of names) { const s = M.stations[n]; pos[n] = { x: pad + (s.lng - lo0) * cos * sc, y: pad + (la1 - s.lat) * sc }; }
+  G = { M, names, pos, W, H };
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const L = $("lines"); L.textContent = "";
+  for (const l of M.lines) {
+    const pts = l.stations.filter(n => pos[n]).map(n => pos[n].x.toFixed(1) + "," + pos[n].y.toFixed(1));
+    if (l.closed && pts.length) pts.push(pts[0]);
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    p.setAttribute("points", pts.join(" ")); p.setAttribute("class", "ln"); p.setAttribute("stroke", l.color);
+    L.appendChild(p);
+  }
+  const R = $("stations"); R.textContent = "";
+  for (const n of names) {
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("class", "st"); g.dataset.n = n;
+    g.innerHTML = '<circle cx="' + pos[n].x.toFixed(1) + '" cy="' + pos[n].y.toFixed(1) + '" r="3"></circle><text class="lbl" x="' + (pos[n].x + 6).toFixed(1) + '" y="' + (pos[n].y + 3).toFixed(1) + '"></text>';
+    R.appendChild(g);
+  }
+  $("stlist").innerHTML = names.slice().sort((a, b) => a.localeCompare(b, "ru")).map(n => '<option value="' + esc(n) + '">').join("");
+  fit();
+}
+
+/* ---------- раскраска ---------- */
+let CUR = { map: new Map() };
+function paint() {
+  const ads = adsOf(S.city, S.model), map = byStation(ads);
+  CUR = { ads, map };
+  const s = svg.getScreenCTM() ? svg.getScreenCTM().a : 1, ppu = s * V.k; // пикселей на единицу карты с учётом масштаба
+  for (const g of $("stations").children) {
+    const n = g.dataset.n, list = map.get(n), c = g.firstChild, t = g.lastChild;
+    let cls = "st", r = 3.2, label = false;
+    if (list) {
+      const rate = stRate(list); cls += " h" + binOf(rate);
+      r = Math.min(15, 5 + Math.sqrt(rate) * 1.5);
+      t.textContent = n + " · " + fmt(rate); label = V.k >= 2 || rate >= 8 || S.sel === n;
+      if (S.todo) cls += " dim";
+    } else {
+      cls += " h0";
+      if (S.todo) { cls += " todo"; r = 5; if (V.k >= 1.6) { t.textContent = n; label = true; } }
+      else if (V.k >= 3.5) { t.textContent = n; label = true; }
+    }
+    if (S.sel === n) cls += " sel";
+    if (label) cls += " show";
+    g.setAttribute("class", cls);
+    c.setAttribute("r", (r / ppu * (ppu > 0 ? 1 : 1)).toFixed(2));
+    const fs = 11 / ppu; t.setAttribute("font-size", fs.toFixed(2));
+    t.setAttribute("x", (G.pos[n].x + (r + 3) / ppu).toFixed(1)); t.setAttribute("y", (G.pos[n].y + 4 / ppu).toFixed(1));
+    t.style.strokeWidth = (3 / ppu).toFixed(2);
+  }
+  const sel = $("stations").querySelector(".sel"); if (sel) $("stations").appendChild(sel);
+  summary(); lists(); table(); detail(); legend();
+}
+
+/* ---------- панели ---------- */
+function legend() {
+  let h = '<b>Просмотров в день на объявление</b><div class="row">';
+  BINLBL.forEach((t, i) => { h += '<span><i style="background:var(--h' + (i + 1) + ')"></i>' + t + '</span>'; });
+  h += '<span><i class="todo"></i>не пробовали</span></div><div class="muted" style="margin-top:4px">Размер точки растёт с числом просмотров</div>';
+  $("legend").innerHTML = h;
+}
+function summary() {
+  const total = G.names.length, tried = CUR.map.size, ads = CUR.ads;
+  const all = adsOf(S.city, "all");
+  $("stats").innerHTML =
+    '<div class="stat"><b>' + tried + ' из ' + total + '</b><span>станций опробовано</span></div>' +
+    '<div class="stat"><b>' + ads.length + '</b><span>' + plural(ads.length, "объявление", "объявления", "объявлений") + '</span></div>' +
+    '<div class="stat"><b>' + (ads.length ? fmt(ads.reduce((s, a) => s + adRate(a), 0) / ads.length) : "—") + '</b><span>просмотров в день, среднее</span></div>';
+  let m = "";
+  for (const k of ["17", "17pm"]) {
+    const l = all.filter(a => a.model === k), r = l.map(adRate);
+    m += '<div class="mod"><span>' + MODEL[k] + '</span><span>' + (l.length ? l.length + " " + plural(l.length, "объявление", "объявления", "объявлений") + ", среднее " + fmt(r.reduce((a, b) => a + b, 0) / r.length) + ", медиана " + fmt(median(r)) + " в день" : "пока нет данных") + '</span></div>';
+  }
+  const u = all.filter(a => a.model === "?").length;
+  if (u) m += '<div class="mod muted"><span>Модель не указана</span><span>' + u + " " + plural(u, "объявление", "объявления", "объявлений") + " первой выкладки</span></div>";
+  $("mods").innerHTML = m;
+}
+function lists() {
+  const rows = [...CUR.map].map(([n, l]) => ({ n, rate: stRate(l) })).sort((a, b) => b.rate - a.rate);
+  const li = r => '<li><button data-go="' + esc(r.n) + '"><span>' + esc(r.n) + '</span><span class="n">' + fmt(r.rate) + '</span></button></li>';
+  const best = rows.slice(0, 5), worst = rows.length > 5 ? rows.slice(-5).reverse() : [];
+  $("best").innerHTML = best.length ? best.map(li).join("") : '<li class="muted">Данных пока нет</li>';
+  $("worst").innerHTML = worst.length ? worst.map(li).join("") : '<li class="muted">Мало данных для сравнения</li>';
+}
+function detail() {
+  const el = $("detail"), n = S.sel;
+  if (!n) { el.innerHTML = '<h2>Станция</h2><p class="muted" style="margin:0">Нажми на точку на карте или выбери станцию в поиске, здесь появится история выкладок.</p>'; return; }
+  const st = G.M.stations[n], lines = [...new Set(st.lines)].map(x => G.M.lines.find(l => l.name === x)).filter(Boolean);
+  const all = adsOf(S.city, "all").filter(a => a.station === n);
+  let h = '<h2>' + esc(n) + '</h2><div class="chips">' + lines.map(l => '<span class="chip"><i style="background:' + l.color + '"></i>' + esc(l.name) + '</span>').join("") + '</div>';
+  if (!all.length) h += '<p class="muted" style="margin:0">Здесь ещё не выкладывали. Это место свободно для проверки.</p>';
+  for (const a of all) {
+    const hist = a.history.length > 1 ? '<div class="small muted">' + a.history.map(x => x.days + " дн.: " + x.views).join(" → ") + '</div>' : "";
+    h += '<div class="ad"><div class="m">' + MODEL[a.model] + '</div><div><span class="big">' + fmt(adViews(a), 0) + '</span> ' + plural(adViews(a), "просмотр", "просмотра", "просмотров") + ' за ' + adDays(a) + ' дн. · <b>' + fmt(adRate(a)) + '</b> в день</div>' + hist +
+      '<div class="small muted">Выкладка №' + a.run + (a.note ? ". " + esc(a.note) : "") + '</div></div>';
+  }
+  el.innerHTML = h;
+}
+function table() {
+  const rows = CUR.ads.map(a => ({ a, n: a.station, m: MODEL[a.model], v: adViews(a), d: adDays(a), rate: adRate(a) }));
+  const { key, dir } = S.sort;
+  rows.sort((x, y) => (typeof x[key] === "string" ? x[key].localeCompare(y[key], "ru") : x[key] - y[key]) * dir || y.rate - x.rate);
+  const th = (k, t, cls) => '<th class="' + (cls || "") + '"><button data-sort="' + k + '">' + t + (S.sort.key === k ? (S.sort.dir > 0 ? " ↑" : " ↓") : "") + '</button></th>';
+  $("tbl").innerHTML = '<thead><tr>' + th("n", "Станция") + th("m", "Телефон") + th("v", "Просмотров", "r") + th("d", "Дней", "r") + th("rate", "В день", "r") + '<th>Выкладка</th></tr></thead><tbody>' +
+    (rows.length ? rows.map(r => '<tr class="row" data-go="' + esc(r.n) + '"><td>' + esc(r.n) + '</td><td>' + r.m + '</td><td class="r">' + fmt(r.v, 0) + '</td><td class="r">' + r.d + '</td><td class="r"><b>' + fmt(r.rate) + '</b></td><td>№' + r.a.run + '</td></tr>').join("") : '<tr><td colspan="6" class="muted">Для этого фильтра данных нет</td></tr>') + '</tbody>';
+}
+
+/* ---------- масштаб и сдвиг ---------- */
+function apply() { world.setAttribute("transform", `translate(${V.tx.toFixed(2)} ${V.ty.toFixed(2)}) scale(${V.k.toFixed(4)})`); paint(); }
+function fit() { V = { k: 1, tx: 0, ty: 0 }; apply(); }
+function pt(e) { const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(svg.getScreenCTM().inverse()); }
+function zoomAt(p, f) {
+  const k = Math.max(1, Math.min(14, V.k * f)), r = k / V.k;
+  V.tx = p.x - (p.x - V.tx) * r; V.ty = p.y - (p.y - V.ty) * r; V.k = k;
+  if (k === 1) { V.tx = 0; V.ty = 0; }
+  apply();
+}
+function focusOn(n) {
+  S.sel = n; const p = G.pos[n]; if (!p) return;
+  V.k = Math.max(V.k, 4); V.tx = G.W / 2 - p.x * V.k; V.ty = G.H / 2 - p.y * V.k; apply();
+}
+svg.addEventListener("wheel", e => { e.preventDefault(); zoomAt(pt(e), e.deltaY < 0 ? 1.25 : 0.8); }, { passive: false });
+const ptrs = new Map(); let moved = 0, downSt = null, last = null, pinch = 0;
+svg.addEventListener("pointerdown", e => {
+  svg.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, e); moved = 0;
+  downSt = e.target.closest(".st"); last = pt(e); svg.classList.add("drag");
+  if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
+});
+svg.addEventListener("pointermove", e => {
+  if (!ptrs.has(e.pointerId)) { hover(e); return; }
+  ptrs.set(e.pointerId, e);
+  if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()], d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    if (pinch) zoomAt(pt({ clientX: (a.clientX + b.clientX) / 2, clientY: (a.clientY + b.clientY) / 2 }), d / pinch);
+    pinch = d; moved = 99; return;
+  }
+  const p = pt(e); const dx = p.x - last.x, dy = p.y - last.y;
+  moved += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0);
+  if (moved > 4) { V.tx += dx * 1; V.ty += dy * 1; apply(); last = pt(e); }
+});
+function endPtr(e) {
+  const was = ptrs.size; ptrs.delete(e.pointerId); pinch = 0; svg.classList.remove("drag");
+  if (was === 1 && moved <= 4 && downSt) { S.sel = downSt.dataset.n; paint(); }
+}
+svg.addEventListener("pointerup", endPtr); svg.addEventListener("pointercancel", endPtr);
+svg.addEventListener("pointerleave", () => { $("tip").style.display = "none"; });
+function hover(e) {
+  const g = e.target.closest && e.target.closest(".st"), tip = $("tip");
+  if (!g || e.pointerType === "touch") { tip.style.display = "none"; return; }
+  const n = g.dataset.n, l = CUR.map.get(n);
+  tip.innerHTML = "<b>" + esc(n) + "</b><br>" + (l ? fmt(stRate(l)) + " просм. в день" : "ещё не пробовали");
+  tip.style.display = "block"; tip.style.left = (e.clientX + 12) + "px"; tip.style.top = (e.clientY + 12) + "px";
+}
+const rc = () => ({ clientX: svg.getBoundingClientRect().left + svg.clientWidth / 2, clientY: svg.getBoundingClientRect().top + svg.clientHeight / 2 });
+$("zin").onclick = () => zoomAt(pt(rc()), 1.5);
+$("zout").onclick = () => zoomAt(pt(rc()), 1 / 1.5);
+$("zreset").onclick = fit;
+window.addEventListener("resize", () => paint());
+
+/* ---------- управление ---------- */
+function seg(id, key, after) {
+  $(id).addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    S[key] = b.dataset.v; for (const x of $(id).children) x.setAttribute("aria-pressed", String(x === b));
+    after();
+  });
+}
+seg("segCity", "city", () => { S.sel = null; build(S.city); paint(); });
+seg("segModel", "model", () => paint());
+$("todo").onchange = e => { S.todo = e.target.checked; paint(); };
+$("search").onchange = e => { const q = norm(e.target.value), n = G.names.find(x => norm(x) === q) || G.names.find(x => norm(x).startsWith(q)); if (n) { focusOn(n); e.target.value = n; } };
+document.addEventListener("click", e => {
+  const go = e.target.closest("[data-go]"); if (go) { focusOn(go.dataset.go); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+  const so = e.target.closest("[data-sort]");
+  if (so) { const k = so.dataset.sort; S.sort = { key: k, dir: S.sort.key === k ? -S.sort.dir : (k === "n" || k === "m" ? 1 : -1) }; table(); }
+});
+
+/* ---------- старт ---------- */
+$("sub").textContent = "Данные обновлены " + D.updated + ". Цвет точки показывает, сколько просмотров в день набирает одно объявление на станции.";
+const unm = D.unmatched || [];
+$("warn").textContent = (D.note || "") + (unm.length ? " Не найдены на карте: " + unm.join(", ") + "." : "");
+build("msk"); paint();
+</script>
